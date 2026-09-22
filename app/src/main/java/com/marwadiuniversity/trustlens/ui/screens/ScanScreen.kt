@@ -13,6 +13,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -21,6 +22,7 @@ import androidx.compose.ui.unit.dp
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions
+import com.marwadiuniversity.trustlens.domain.engine.PaymentScreenshotAnalyzer
 import com.marwadiuniversity.trustlens.domain.model.ScanType
 import com.marwadiuniversity.trustlens.ui.components.ScanOptionCard
 import com.marwadiuniversity.trustlens.viewmodel.MainViewModel
@@ -49,7 +51,13 @@ fun ScanScreen(
                     .addOnSuccessListener { visionText ->
                         val extractedText = visionText.text
                         if (extractedText.isNotBlank()) {
-                            riskViewModel.analyzeInput(extractedText, ScanType.MESSAGE)
+                            val screenshotAnalyzer = PaymentScreenshotAnalyzer()
+                            val scanType = if (screenshotAnalyzer.isPaymentScreenshot(extractedText)) {
+                                ScanType.SCREENSHOT
+                            } else {
+                                ScanType.MESSAGE
+                            }
+                            riskViewModel.analyzeInput(extractedText, scanType)
                             onNavigateToResult()
                         } else {
                             ocrStatusMessage = "No readable text was detected in this image."
@@ -98,13 +106,13 @@ fun ScanScreen(
                     .clickable { onNavigateToCameraScanner() }
                     .padding(20.dp),
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
-                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 Box(
                     modifier = Modifier
                         .size(48.dp)
                         .background(MaterialTheme.colorScheme.secondaryContainer, RoundedCornerShape(12.dp)),
-                    contentAlignment = androidx.compose.ui.Alignment.Center
+                    contentAlignment = Alignment.Center
                 ) {
                     Icon(imageVector = Icons.Default.QrCodeScanner, contentDescription = null, tint = MaterialTheme.colorScheme.secondary)
                 }
@@ -128,13 +136,13 @@ fun ScanScreen(
                     .clickable { galleryLauncher.launch("image/*") }
                     .padding(20.dp),
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
-                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 Box(
                     modifier = Modifier
                         .size(48.dp)
                         .background(Color(0xFF16A34A).copy(alpha = 0.15f), RoundedCornerShape(12.dp)),
-                    contentAlignment = androidx.compose.ui.Alignment.Center
+                    contentAlignment = Alignment.Center
                 ) {
                     Icon(imageVector = Icons.Default.Image, contentDescription = null, tint = Color(0xFF16A34A))
                 }

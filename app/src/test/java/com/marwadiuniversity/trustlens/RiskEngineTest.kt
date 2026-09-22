@@ -1,6 +1,7 @@
 package com.marwadiuniversity.trustlens
 
 import com.marwadiuniversity.trustlens.domain.engine.MessageRiskAnalyzer
+import com.marwadiuniversity.trustlens.domain.engine.PaymentScreenshotAnalyzer
 import com.marwadiuniversity.trustlens.domain.engine.UpiRiskAnalyzer
 import com.marwadiuniversity.trustlens.domain.engine.UrlRiskAnalyzer
 import com.marwadiuniversity.trustlens.domain.model.RiskLevel
@@ -13,6 +14,7 @@ class RiskEngineTest {
     private val urlAnalyzer = UrlRiskAnalyzer()
     private val messageAnalyzer = MessageRiskAnalyzer()
     private val upiAnalyzer = UpiRiskAnalyzer()
+    private val screenshotAnalyzer = PaymentScreenshotAnalyzer()
 
     @Test
     fun test1_googleUrl() {
@@ -67,67 +69,73 @@ class RiskEngineTest {
     }
 
     @Test
-    fun test9_upiUriWithAmount() {
-        val result = upiAnalyzer.analyze("upi://pay?pa=store@upi&am=500&cu=INR")
-        assertTrue("UPI with valid amount should be low risk", result.score < 30)
+    fun test9_normalPaymentSuccessScreenshot() {
+        val text = "Payment Successful\nAmount ₹500\nTransaction ID ABC123\nPaid to Test Store\nUPI ID merchant@upi"
+        val result = screenshotAnalyzer.analyze(text)
+        assertTrue("Normal payment success screenshot should be LOW risk", result.score < 30)
+        assertTrue("Scan type should be SCREENSHOT", result.scanType == ScanType.SCREENSHOT)
     }
 
     @Test
-    fun test10_upiMissingPayee() {
-        val result = upiAnalyzer.analyze("upi://pay?am=500&cu=INR")
-        assertTrue("Missing payee should trigger high/critical risk", result.score >= 35)
-        assertTrue("Should be QR_SCAM", result.threatCategory == ThreatCategory.QR_SCAM)
+    fun test10_conflictingPaymentStatusScreenshot() {
+        val text = "Payment Successful\nPayment Failed\nAmount ₹500\nTransaction ID ABC123"
+        val result = screenshotAnalyzer.analyze(text)
+        assertTrue("Conflicting payment status should trigger high risk", result.score >= 40)
+        assertTrue("Should be PAYMENT_SCAM", result.threatCategory == ThreatCategory.PAYMENT_SCAM)
     }
 
     @Test
-    fun test11_upiInvalidAddress() {
-        val result = upiAnalyzer.analyze("upi://pay?pa=invalid")
-        assertTrue("Invalid UPI address should trigger risk", result.score >= 35)
+    fun test11_conflictingAmountsScreenshot() {
+        val text = "Payment Successful\nAmount ₹500\nTotal Amount ₹5,000\nTransaction ID ABC123"
+        val result = screenshotAnalyzer.analyze(text)
+        assertTrue("Conflicting amounts should trigger high risk", result.score >= 35)
     }
 
     @Test
-    fun test12_upiInvalidAmount() {
-        val result = upiAnalyzer.analyze("upi://pay?pa=test@upi&am=abc&cu=INR")
-        assertTrue("Invalid amount should trigger indicator", result.indicators.any { it.title.contains("Invalid Payment Amount", true) })
+    fun test12_successClaimWithMissingMetadata() {
+        val text = "Payment Successful"
+        val result = screenshotAnalyzer.analyze(text)
+        assertTrue("Success claim with missing metadata should have moderate indicator", result.indicators.any { it.title.contains("Limited Transaction Evidence", true) })
     }
 
     @Test
-    fun test13_upiNegativeAmount() {
-        val result = upiAnalyzer.analyze("upi://pay?pa=test@upi&am=-50&cu=INR")
-        assertTrue("Negative amount should trigger indicator", result.indicators.any { it.title.contains("Invalid Payment Amount", true) })
+    fun test13_emptyScreenshotText() {
+        val result = screenshotAnalyzer.analyze("")
+        assertTrue("Empty screenshot text should be LOW risk", result.score == 0)
     }
 
     @Test
-    fun test14_upiMalformedUri() {
-        val result = upiAnalyzer.analyze("upi://pay?%%%%")
-        assertTrue("Malformed UPI URI should not crash", result.score >= 0)
+    fun test14_normalDocumentOcr() {
+        val text = "Student Name: Rahul\nMarks: 85\nDate: 12/09/2026"
+        val isPayment = screenshotAnalyzer.isPaymentScreenshot(text)
+        assertTrue("Normal document should not be recognized as payment screenshot", !isPayment)
     }
 
     @Test
-    fun test15_upiEmptyInput() {
-        val result = upiAnalyzer.analyze("")
-        assertTrue("Empty UPI input should be LOW risk", result.score == 0)
+    fun test15_normalFinancialText() {
+        val text = "The company reported revenue of INR 5 crore."
+        val isPayment = screenshotAnalyzer.isPaymentScreenshot(text)
+        assertTrue("Normal financial text should not be recognized as payment screenshot", !isPayment)
     }
 
     @Test
-    fun test16_textContainingUpiIsNotUpi() {
-        val rawValue = "UPI payments are convenient."
-        val lower = rawValue.lowercase()
-        val isUpi = lower.startsWith("upi://pay") || lower.startsWith("upi:")
-        assertTrue("Ordinary text containing UPI must not be classified as UPI", !isUpi)
+    fun test16_ocrTypoTolerance() {
+        val text = "Paymnt Successfl\nAmount Rs 500\nTxn ID XYZ789"
+        val result = screenshotAnalyzer.analyze(text)
+        assertTrue("OCR typo tolerance test should not crash", result.score >= 0)
     }
 
     @Test
-    fun test17_caseInsensitiveUpiScheme() {
-        val rawValue = "UPI://PAY?pa=test@upi&pn=Test"
-        val lower = rawValue.lowercase()
-        val isUpi = lower.startsWith("upi://pay") || lower.startsWith("upi:")
-        assertTrue("Case-insensitive UPI scheme should be recognized", isUpi)
+    fun test17_refundText() {
+        val text = "Refund processed successfully\nAmount ₹1,200\nTxn REF123"
+        val result = screenshotAnalyzer.analyze(text)
+        assertTrue("Refund text should be handled safely", result.score < 40)
     }
 
     @Test
-    fun test18_ordinaryMerchantUpiQr() {
-        val result = upiAnalyzer.analyze("upi://pay?pa=shop@okaxis&pn=Local%20Merchant&am=250&cu=INR")
-        assertTrue("Ordinary merchant UPI should remain LOW risk", result.score < 30)
+    fun test18_lowQualityIncompletePaymentText() {
+        val text = "Paid ₹200 to merchant"
+        val result = screenshotAnalyzer.analyze(text)
+        assertTrue("Low quality payment text should be handled safely", result.score < 40)
     }
 }

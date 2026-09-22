@@ -3,5 +3,6 @@ package com.marwadiuniversity.trustlens.domain.model
 enum class ScanType {
     URL,
     MESSAGE,
-    UPI
+    UPI,
+    SCREENSHOT
 }
