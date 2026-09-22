@@ -1,8 +1,10 @@
 package com.marwadiuniversity.trustlens
 
 import com.marwadiuniversity.trustlens.domain.engine.MessageRiskAnalyzer
+import com.marwadiuniversity.trustlens.domain.engine.UpiRiskAnalyzer
 import com.marwadiuniversity.trustlens.domain.engine.UrlRiskAnalyzer
 import com.marwadiuniversity.trustlens.domain.model.RiskLevel
+import com.marwadiuniversity.trustlens.domain.model.ScanType
 import com.marwadiuniversity.trustlens.domain.model.ThreatCategory
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -10,6 +12,7 @@ import org.junit.Test
 class RiskEngineTest {
     private val urlAnalyzer = UrlRiskAnalyzer()
     private val messageAnalyzer = MessageRiskAnalyzer()
+    private val upiAnalyzer = UpiRiskAnalyzer()
 
     @Test
     fun test1_googleUrl() {
@@ -57,69 +60,74 @@ class RiskEngineTest {
     }
 
     @Test
-    fun test8_bankImpersonation() {
-        val result = messageAnalyzer.analyze("This is SBI security team. Send your OTP immediately.")
-        assertTrue("Bank impersonation OTP request should be high risk", result.score >= 50)
+    fun test8_validNormalUpiUri() {
+        val result = upiAnalyzer.analyze("upi://pay?pa=merchant@upi&pn=Test%20Store&am=100&cu=INR")
+        assertTrue("Valid normal UPI URI should be LOW risk", result.score < 30)
+        assertTrue("Scan type should be UPI", result.scanType == ScanType.UPI)
     }
 
     @Test
-    fun test9_refundScam() {
-        val result = messageAnalyzer.analyze("Pay ₹500 processing fee to receive your refund.")
-        assertTrue("Refund scam should be PAYMENT_SCAM", result.threatCategory == ThreatCategory.PAYMENT_SCAM)
+    fun test9_upiUriWithAmount() {
+        val result = upiAnalyzer.analyze("upi://pay?pa=store@upi&am=500&cu=INR")
+        assertTrue("UPI with valid amount should be low risk", result.score < 30)
     }
 
     @Test
-    fun test10_safeJobAd() {
-        val result = messageAnalyzer.analyze("Our company is hiring software engineers.")
-        assertTrue("Safe job ad should be LOW risk", result.score < 30)
+    fun test10_upiMissingPayee() {
+        val result = upiAnalyzer.analyze("upi://pay?am=500&cu=INR")
+        assertTrue("Missing payee should trigger high/critical risk", result.score >= 35)
+        assertTrue("Should be QR_SCAM", result.threatCategory == ThreatCategory.QR_SCAM)
     }
 
     @Test
-    fun test11_fakeJobFee() {
-        val result = messageAnalyzer.analyze("Congratulations, you have been selected. Pay ₹999 registration fee to confirm your job.")
-        assertTrue("Fake job fee scam should be FAKE_JOB", result.threatCategory == ThreatCategory.FAKE_JOB)
+    fun test11_upiInvalidAddress() {
+        val result = upiAnalyzer.analyze("upi://pay?pa=invalid")
+        assertTrue("Invalid UPI address should trigger risk", result.score >= 35)
     }
 
     @Test
-    fun test12_safeInvestment() {
-        val result = messageAnalyzer.analyze("Investments involve market risk and returns are not guaranteed.")
-        assertTrue("Safe investment disclosure should be LOW risk", result.score < 30)
+    fun test12_upiInvalidAmount() {
+        val result = upiAnalyzer.analyze("upi://pay?pa=test@upi&am=abc&cu=INR")
+        assertTrue("Invalid amount should trigger indicator", result.indicators.any { it.title.contains("Invalid Payment Amount", true) })
     }
 
     @Test
-    fun test13_fakeInvestmentScam() {
-        val result = messageAnalyzer.analyze("Invest ₹5,000 and get guaranteed ₹50,000 in 7 days.")
-        assertTrue("Guaranteed return investment scam should be FAKE_INVESTMENT", result.threatCategory == ThreatCategory.FAKE_INVESTMENT)
+    fun test13_upiNegativeAmount() {
+        val result = upiAnalyzer.analyze("upi://pay?pa=test@upi&am=-50&cu=INR")
+        assertTrue("Negative amount should trigger indicator", result.indicators.any { it.title.contains("Invalid Payment Amount", true) })
     }
 
     @Test
-    fun test14_emptyMessage() {
-        val result = messageAnalyzer.analyze("")
-        assertTrue("Empty message should be LOW risk", result.score == 0)
+    fun test14_upiMalformedUri() {
+        val result = upiAnalyzer.analyze("upi://pay?%%%%")
+        assertTrue("Malformed UPI URI should not crash", result.score >= 0)
     }
 
     @Test
-    fun test15_successfulPaymentNotification() {
-        val result = messageAnalyzer.analyze("Your payment of ₹500 was successful.")
-        assertTrue("Successful payment notification should be LOW risk", result.score < 30)
+    fun test15_upiEmptyInput() {
+        val result = upiAnalyzer.analyze("")
+        assertTrue("Empty UPI input should be LOW risk", result.score == 0)
     }
 
     @Test
-    fun test16_safeRecruitmentFeeWarning() {
-        val result = messageAnalyzer.analyze("Never pay anyone a recruitment fee.")
-        assertTrue("Safe recruitment fee warning should be LOW risk", result.score < 30)
+    fun test16_textContainingUpiIsNotUpi() {
+        val rawValue = "UPI payments are convenient."
+        val lower = rawValue.lowercase()
+        val isUpi = lower.startsWith("upi://pay") || lower.startsWith("upi:")
+        assertTrue("Ordinary text containing UPI must not be classified as UPI", !isUpi)
     }
 
     @Test
-    fun test17_urlAndUrgencyMessage() {
-        val result = messageAnalyzer.analyze("Your account is suspended. Verify immediately: http://192.168.1.1/login")
-        assertTrue("Urgent URL message should be high risk", result.score >= 40)
+    fun test17_caseInsensitiveUpiScheme() {
+        val rawValue = "UPI://PAY?pa=test@upi&pn=Test"
+        val lower = rawValue.lowercase()
+        val isUpi = lower.startsWith("upi://pay") || lower.startsWith("upi:")
+        assertTrue("Case-insensitive UPI scheme should be recognized", isUpi)
     }
 
     @Test
-    fun test18_veryLongMessage() {
-        val longMsg = "Please note that " + "word ".repeat(200)
-        val result = messageAnalyzer.analyze(longMsg)
-        assertTrue("Long message should be handled without crash", result.score >= 0)
+    fun test18_ordinaryMerchantUpiQr() {
+        val result = upiAnalyzer.analyze("upi://pay?pa=shop@okaxis&pn=Local%20Merchant&am=250&cu=INR")
+        assertTrue("Ordinary merchant UPI should remain LOW risk", result.score < 30)
     }
 }

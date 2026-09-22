@@ -24,6 +24,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
+import com.google.mlkit.vision.barcode.BarcodeScannerOptions
 import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.barcode.common.Barcode
 import com.google.mlkit.vision.common.InputImage
@@ -121,7 +122,7 @@ fun CameraScannerScreen(
                         }
 
                         val scanner = BarcodeScanning.getClient(
-                            com.google.mlkit.vision.barcode.BarcodeScannerOptions.Builder()
+                            BarcodeScannerOptions.Builder()
                                 .setBarcodeFormats(Barcode.FORMAT_QR_CODE)
                                 .build()
                         )
@@ -143,10 +144,11 @@ fun CameraScannerScreen(
                                             val rawValue = barcode.rawValue
                                             if (rawValue != null && rawValue != lastDetectedValue) {
                                                 lastDetectedValue = rawValue
-                                                val scanType = if (rawValue.startsWith("http://") || rawValue.startsWith("https://") || rawValue.startsWith("www.")) {
-                                                    ScanType.URL
-                                                } else {
-                                                    ScanType.MESSAGE
+                                                val lower = rawValue.lowercase()
+                                                val scanType = when {
+                                                    lower.startsWith("upi://pay") || lower.startsWith("upi:") -> ScanType.UPI
+                                                    lower.startsWith("http://") || lower.startsWith("https://") || lower.startsWith("www.") -> ScanType.URL
+                                                    else -> ScanType.MESSAGE
                                                 }
                                                 riskViewModel.analyzeInput(rawValue, scanType)
                                                 onNavigateToResult()
