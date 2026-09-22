@@ -17,6 +17,12 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        buildConfigField(
+            "String",
+            "AI_BACKEND_URL",
+            "\"http://10.0.2.2:3000/api/ai/analyze\""
+        )
     }
 
     signingConfigs {
@@ -31,6 +37,11 @@ android {
     buildTypes {
         release {
             isMinifyEnabled = false
+            buildConfigField(
+                "String",
+                "AI_BACKEND_URL",
+                "\"https://YOUR_PRODUCTION_API_DOMAIN/api/ai/analyze\""
+            )
         }
     }
     compileOptions {
@@ -39,7 +50,9 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
+
 }
 
 dependencies {
