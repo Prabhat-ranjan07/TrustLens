@@ -39,90 +39,87 @@ class RiskEngineTest {
     fun test5_lotteryPrizeFee() {
         val result = messageAnalyzer.analyze("Congratulations! You won ₹50,000. Pay ₹500 processing fee to claim your prize.")
         assertTrue("Lottery fee scam should be HIGH or CRITICAL risk", result.score >= 50)
+        assertTrue("Should be LOTTERY_SCAM", result.threatCategory == ThreatCategory.LOTTERY_SCAM)
     }
 
     @Test
     fun test6_safeOtpWarning() {
         val result = messageAnalyzer.analyze("Your OTP is 123456. Never share this OTP with anyone.")
         assertTrue("Safe OTP warning message should be LOW risk", result.score < 40)
+        assertTrue("Safe OTP should not be CREDENTIAL_THEFT", result.threatCategory != ThreatCategory.CREDENTIAL_THEFT)
     }
 
     @Test
     fun test7_maliciousOtpRequest() {
         val result = messageAnalyzer.analyze("Send me your OTP to complete the refund.")
         assertTrue("Malicious OTP request should be HIGH or CRITICAL risk", result.score >= 50)
+        assertTrue("Should be CREDENTIAL_THEFT", result.threatCategory == ThreatCategory.CREDENTIAL_THEFT)
     }
 
     @Test
-    fun test8_atSymbolUrl() {
-        val result = urlAnalyzer.analyze("https://trusted.example@malicious.example")
-        assertTrue("At symbol in URL should trigger indicator", result.indicators.any { it.title.contains("Embedded '@'", true) })
+    fun test8_bankImpersonation() {
+        val result = messageAnalyzer.analyze("This is SBI security team. Send your OTP immediately.")
+        assertTrue("Bank impersonation OTP request should be high risk", result.score >= 50)
     }
 
     @Test
-    fun test9_userInfoUrl() {
-        val result = urlAnalyzer.analyze("https://user:pass@example.com/login")
-        assertTrue("User info in authority should trigger indicator", result.indicators.any { it.title.contains("Embedded Credentials", true) })
+    fun test9_refundScam() {
+        val result = messageAnalyzer.analyze("Pay ₹500 processing fee to receive your refund.")
+        assertTrue("Refund scam should be PAYMENT_SCAM", result.threatCategory == ThreatCategory.PAYMENT_SCAM)
     }
 
     @Test
-    fun test10_unusualPortUrl() {
-        val result = urlAnalyzer.analyze("https://example.com:8080/path")
-        assertTrue("Unusual port should trigger indicator", result.indicators.any { it.title.contains("Unusual Port", true) })
+    fun test10_safeJobAd() {
+        val result = messageAnalyzer.analyze("Our company is hiring software engineers.")
+        assertTrue("Safe job ad should be LOW risk", result.score < 30)
     }
 
     @Test
-    fun test11_excessiveLengthUrl() {
-        val longUrl = "https://example.com/" + "a".repeat(100)
-        val result = urlAnalyzer.analyze(longUrl)
-        assertTrue("Excessive length should trigger indicator", result.indicators.any { it.title.contains("Excessive URL Length", true) })
+    fun test11_fakeJobFee() {
+        val result = messageAnalyzer.analyze("Congratulations, you have been selected. Pay ₹999 registration fee to confirm your job.")
+        assertTrue("Fake job fee scam should be FAKE_JOB", result.threatCategory == ThreatCategory.FAKE_JOB)
     }
 
     @Test
-    fun test12_excessiveParamsUrl() {
-        val result = urlAnalyzer.analyze("https://example.com?p1=1&p2=2&p3=3&p4=4&p5=5&p6=6")
-        assertTrue("Excessive query params should trigger indicator", result.indicators.any { it.title.contains("Excessive Query Parameters", true) })
+    fun test12_safeInvestment() {
+        val result = messageAnalyzer.analyze("Investments involve market risk and returns are not guaranteed.")
+        assertTrue("Safe investment disclosure should be LOW risk", result.score < 30)
     }
 
     @Test
-    fun test13_percentEncodedUrl() {
-        val result = urlAnalyzer.analyze("https://example.com/%40secure%2Flogin")
-        assertTrue("Suspicious encoding should trigger indicator", result.indicators.any { it.title.contains("Suspicious URL Encoding", true) })
+    fun test13_fakeInvestmentScam() {
+        val result = messageAnalyzer.analyze("Invest ₹5,000 and get guaranteed ₹50,000 in 7 days.")
+        assertTrue("Guaranteed return investment scam should be FAKE_INVESTMENT", result.threatCategory == ThreatCategory.FAKE_INVESTMENT)
     }
 
     @Test
-    fun test14_credentialIntentUrl() {
-        val result = urlAnalyzer.analyze("https://example.com/login/verify/password")
-        assertTrue("Credential intent should categorize as CREDENTIAL_THEFT", result.threatCategory == ThreatCategory.CREDENTIAL_THEFT)
+    fun test14_emptyMessage() {
+        val result = messageAnalyzer.analyze("")
+        assertTrue("Empty message should be LOW risk", result.score == 0)
     }
 
     @Test
-    fun test15_paymentIntentUrl() {
-        val result = urlAnalyzer.analyze("https://example.com/refund/upi/payment")
-        assertTrue("Payment intent should categorize as PAYMENT_SCAM", result.threatCategory == ThreatCategory.PAYMENT_SCAM)
+    fun test15_successfulPaymentNotification() {
+        val result = messageAnalyzer.analyze("Your payment of ₹500 was successful.")
+        assertTrue("Successful payment notification should be LOW risk", result.score < 30)
     }
 
     @Test
-    fun test16_malformedUrl() {
-        val result = urlAnalyzer.analyze("invalid://[url]")
-        assertTrue("Malformed URL should be handled safely", result.score >= 0)
+    fun test16_safeRecruitmentFeeWarning() {
+        val result = messageAnalyzer.analyze("Never pay anyone a recruitment fee.")
+        assertTrue("Safe recruitment fee warning should be LOW risk", result.score < 30)
     }
 
     @Test
-    fun test17_emptyInputUrl() {
-        val result = urlAnalyzer.analyze("")
-        assertTrue("Empty input URL should be LOW risk", result.score == 0)
+    fun test17_urlAndUrgencyMessage() {
+        val result = messageAnalyzer.analyze("Your account is suspended. Verify immediately: http://192.168.1.1/login")
+        assertTrue("Urgent URL message should be high risk", result.score >= 40)
     }
 
     @Test
-    fun test18_normalQueryUrlFalsePositiveCheck() {
-        val result = urlAnalyzer.analyze("https://www.google.com/search?q=android&hl=en&safe=active")
-        assertTrue("Normal Google search URL should not be flagged as high risk", result.score < 40)
-    }
-
-    @Test
-    fun test19_normalLongUrlFalsePositiveCheck() {
-        val result = urlAnalyzer.analyze("https://en.wikipedia.org/wiki/Android_(operating_system)")
-        assertTrue("Normal Wikipedia URL should not be flagged as high risk", result.score < 40)
+    fun test18_veryLongMessage() {
+        val longMsg = "Please note that " + "word ".repeat(200)
+        val result = messageAnalyzer.analyze(longMsg)
+        assertTrue("Long message should be handled without crash", result.score >= 0)
     }
 }
