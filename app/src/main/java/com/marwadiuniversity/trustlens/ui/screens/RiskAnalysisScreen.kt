@@ -16,6 +16,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.marwadiuniversity.trustlens.domain.model.RiskLevel
+import com.marwadiuniversity.trustlens.domain.model.ThreatCategory
 import com.marwadiuniversity.trustlens.viewmodel.MainViewModel
 import com.marwadiuniversity.trustlens.viewmodel.RiskAnalysisUiState
 import com.marwadiuniversity.trustlens.viewmodel.RiskAnalysisViewModel
@@ -170,19 +171,23 @@ fun RiskAnalysisScreen(
                                     fontWeight = FontWeight.Bold
                                 )
                             }
-                            if (aiResult != null) {
-                                Surface(
-                                    shape = RoundedCornerShape(50),
-                                    color = MaterialTheme.colorScheme.secondaryContainer
-                                ) {
-                                    Text(
-                                        text = "AI Confidence: ${(aiResult.confidence * 100).toInt()}%",
-                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSecondaryContainer,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                }
+                            // Source Label
+                            val sourceLabel = when (aiResult?.aiSource) {
+                                "gemini" -> "AI-assisted analysis"
+                                "fallback" -> "Local analysis — AI unavailable"
+                                else -> "Local analysis"
+                            }
+                            Surface(
+                                shape = RoundedCornerShape(50),
+                                color = MaterialTheme.colorScheme.secondaryContainer
+                            ) {
+                                Text(
+                                    text = sourceLabel,
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                    fontWeight = FontWeight.Bold
+                                )
                             }
                         }
 
@@ -206,7 +211,7 @@ fun RiskAnalysisScreen(
                                         color = if (result.score < 30) Color(0xFF16A34A) else MaterialTheme.colorScheme.error
                                     )
                                     Text(
-                                        text = "Combined Score",
+                                        text = "Risk Score",
                                         style = MaterialTheme.typography.labelSmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
@@ -219,21 +224,33 @@ fun RiskAnalysisScreen(
                                     .padding(start = 16.dp),
                                 verticalArrangement = Arrangement.spacedBy(4.dp)
                             ) {
+                                // Threat Category Badge
+                                val categoryText = if (result.threatCategory == ThreatCategory.UNKNOWN) {
+                                    "Unknown / No specific threat category"
+                                } else {
+                                    formatThreatCategory(result.threatCategory.name)
+                                }
                                 Text(
-                                    text = if (aiResult != null) "AI-Enhanced Threat Analysis" else "Local Deterministic Analysis",
-                                    style = MaterialTheme.typography.titleMedium,
+                                    text = "Threat: $categoryText",
+                                    style = MaterialTheme.typography.titleSmall,
                                     fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onSurface
+                                    color = MaterialTheme.colorScheme.primary
                                 )
+                                val confidenceStr = if (aiResult != null && aiResult.confidence > 0f) {
+                                    "AI confidence: ${(aiResult.confidence * 100).toInt()}%"
+                                } else {
+                                    "Confidence: Not provided"
+                                }
                                 Text(
-                                    text = result.recommendation,
+                                    text = confidenceStr,
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    fontWeight = FontWeight.Medium
                                 )
                             }
                         }
 
-                        if (aiResult != null) {
+                        if (aiResult != null && aiResult.summary.isNotBlank()) {
                             Surface(
                                 shape = RoundedCornerShape(12.dp),
                                 color = MaterialTheme.colorScheme.surfaceContainerLow
@@ -247,7 +264,7 @@ fun RiskAnalysisScreen(
                     }
                 }
 
-                // Analyzed Input Display
+                // What should you do? (Recommendation)
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(20.dp),
@@ -258,7 +275,31 @@ fun RiskAnalysisScreen(
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         Text(
-                            text = "Analyzed Input (${result.scanType})",
+                            text = "What should you do?",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = result.recommendation,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+
+                // Analyzed Input Display (Privacy safe summary)
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(20.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                            text = "Analyzed Target (${result.scanType})",
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontWeight = FontWeight.Bold
@@ -277,7 +318,7 @@ fun RiskAnalysisScreen(
                     }
                 }
 
-                // Risk Indicators Breakdown
+                // Risk Indicators Breakdown ("Why this was flagged" or "Analysis summary")
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(20.dp),
@@ -287,51 +328,78 @@ fun RiskAnalysisScreen(
                         modifier = Modifier.padding(16.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
+                        val sectionTitle = if (result.indicators.isEmpty() || (result.indicators.size == 1 && result.indicators[0].title.contains("Clean", true))) {
+                            "Analysis summary"
+                        } else {
+                            "Why this was flagged"
+                        }
                         Text(
-                            text = "Why this looks suspicious / Indicators",
+                            text = sectionTitle,
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurface
                         )
 
-                        result.indicators.forEach { ind ->
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(36.dp)
-                                        .clip(RoundedCornerShape(10.dp))
-                                        .background(MaterialTheme.colorScheme.surfaceContainerLow),
-                                    contentAlignment = Alignment.Center
+                        if (result.indicators.isEmpty()) {
+                            Text(
+                                text = "No significant suspicious indicators were detected by the current analysis.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        } else {
+                            result.indicators.forEach { ind ->
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                    verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Warning,
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.secondary,
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                }
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        text = ind.title,
-                                        style = MaterialTheme.typography.titleMedium,
-                                        fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.onSurface
-                                    )
-                                    Text(
-                                        text = ind.description,
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
+                                    Box(
+                                        modifier = Modifier
+                                            .size(36.dp)
+                                            .clip(RoundedCornerShape(10.dp))
+                                            .background(MaterialTheme.colorScheme.surfaceContainerLow),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Warning,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.secondary,
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                    }
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = ind.title,
+                                            style = MaterialTheme.typography.titleMedium,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.onSurface
+                                        )
+                                        Text(
+                                            text = ind.description,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
                                 }
                             }
                         }
                     }
                 }
+
+                // Certainty Boundary Note
+                Text(
+                    text = "TrustLens identifies risk indicators. It does not guarantee that an item is fraudulent or safe.",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.outline,
+                    modifier = Modifier.padding(horizontal = 4.dp)
+                )
             }
         }
+    }
+}
+
+private fun formatThreatCategory(categoryStr: String): String {
+    return categoryStr.split("_").joinToString(" ") { word ->
+        word.lowercase().replaceFirstChar { it.uppercase() }
     }
 }

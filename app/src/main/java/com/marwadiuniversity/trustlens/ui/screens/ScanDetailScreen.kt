@@ -108,11 +108,27 @@ fun ScanDetailScreen(
                         )
                     }
 
+                    val categoryText = if (item.threatCategory == "UNKNOWN" || item.threatCategory.isBlank()) {
+                        "Unknown / No specific threat category"
+                    } else {
+                        formatThreatCategory(item.threatCategory)
+                    }
                     Text(
-                        text = "Threat Category: ${formatThreatCategory(item.threatCategory)}",
+                        text = "Threat: $categoryText",
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.primary
+                    )
+
+                    val confidenceStr = if (item.confidence > 0f) {
+                        "AI confidence: ${(item.confidence * 100).toInt()}%"
+                    } else {
+                        "Confidence: Not provided"
+                    }
+                    Text(
+                        text = confidenceStr,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
 
                     Text(
@@ -124,21 +140,8 @@ fun ScanDetailScreen(
                     HorizontalDivider(color = MaterialTheme.colorScheme.surfaceContainer)
 
                     Text(
-                        text = "Detected Indicators:",
-                        style = MaterialTheme.typography.labelLarge,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        text = item.indicatorsJson,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-
-                    HorizontalDivider(color = MaterialTheme.colorScheme.surfaceContainer)
-
-                    Text(
-                        text = "Recommendation:",
-                        style = MaterialTheme.typography.labelLarge,
+                        text = "What should you do?",
+                        style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.Bold
                     )
                     Text(
@@ -147,9 +150,34 @@ fun ScanDetailScreen(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
 
+                    HorizontalDivider(color = MaterialTheme.colorScheme.surfaceContainer)
+
+                    Text(
+                        text = "Why this was flagged",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = item.indicatorsJson,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+
+                    Spacer(modifier = Modifier.height(4.dp))
+                    val sourceLabel = when (item.aiSource) {
+                        "gemini" -> "AI-assisted analysis"
+                        "fallback" -> "Local analysis — AI unavailable"
+                        else -> "Local analysis"
+                    }
+                    Text(
+                        text = "Source: $sourceLabel",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.outline
+                    )
+
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = "Source: ${item.aiSource.uppercase()} (Confidence: ${(item.confidence * 100).toInt()}%)",
+                        text = "TrustLens identifies risk indicators. It does not guarantee that an item is fraudulent or safe.",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.outline
                     )
