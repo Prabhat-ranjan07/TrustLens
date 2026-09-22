@@ -4,6 +4,7 @@ import com.marwadiuniversity.trustlens.domain.model.RiskIndicator
 import com.marwadiuniversity.trustlens.domain.model.RiskLevel
 import com.marwadiuniversity.trustlens.domain.model.RiskResult
 import com.marwadiuniversity.trustlens.domain.model.ScanType
+import com.marwadiuniversity.trustlens.domain.model.ThreatCategory
 import com.marwadiuniversity.trustlens.domain.model.riskLevelFromScore
 import java.net.URI
 import java.util.Locale
@@ -49,13 +50,17 @@ class UrlRiskAnalyzer {
                 scanType = ScanType.URL,
                 input = urlInput,
                 indicators = indicators,
-                recommendation = getRecommendation(RiskLevel.HIGH)
+                recommendation = getRecommendation(RiskLevel.HIGH),
+                threatCategory = ThreatCategory.SUSPICIOUS_URL
             )
         }
 
         val scheme = uri.scheme?.lowercase(Locale.ROOT) ?: "http"
         val host = (uri.host ?: uri.path)?.lowercase(Locale.ROOT) ?: ""
         val fullUrl = uri.toString().lowercase(Locale.ROOT)
+
+        var hasBrandMismatch = false
+        var hasIpOrShortener = false
 
         // Rule A: HTTP vs HTTPS
         if (scheme == "http") {
@@ -67,12 +72,14 @@ class UrlRiskAnalyzer {
         val ipRegex = Regex("""\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b""")
         if (ipRegex.containsMatchIn(host)) {
             score += WEIGHT_IP_HOST
+            hasIpOrShortener = true
             indicators.add(RiskIndicator("Raw IP Address Host", "The domain is specified as a raw IP address, which is common in phishing.", RiskLevel.HIGH))
         }
 
         // Rule C: URL Shortener
         if (SHORTENERS.any { host.contains(it) }) {
             score += WEIGHT_SHORTENER
+            hasIpOrShortener = true
             indicators.add(RiskIndicator("URL Shortening Service", "Uses a link shortener that conceals the true destination domain.", RiskLevel.MEDIUM))
         }
 
@@ -109,6 +116,7 @@ class UrlRiskAnalyzer {
                 val matchesOfficial = officialDomains.any { host.endsWith(it) }
                 if (!matchesOfficial) {
                     score += WEIGHT_BRAND_MISMATCH
+                    hasBrandMismatch = true
                     indicators.add(RiskIndicator("Possible Brand Mismatch", "Mentions '$brand' but the domain does not match official verified domains.", RiskLevel.HIGH))
                     break
                 }
@@ -118,6 +126,13 @@ class UrlRiskAnalyzer {
         val finalScore = score.coerceIn(0, 100)
         val level = riskLevelFromScore(finalScore)
 
+        val category = when {
+            hasBrandMismatch -> ThreatCategory.CREDENTIAL_THEFT
+            finalScore >= 50 && keywordCount > 0 -> ThreatCategory.PHISHING
+            hasIpOrShortener || finalScore >= 30 -> ThreatCategory.SUSPICIOUS_URL
+            else -> ThreatCategory.UNKNOWN
+        }
+
         return RiskResult(
             score = finalScore,
             level = level,
@@ -126,7 +141,8 @@ class UrlRiskAnalyzer {
             indicators = indicators.ifEmpty {
                 listOf(RiskIndicator("Clean URL", "No major risk indicators were detected in this URL.", RiskLevel.LOW))
             },
-            recommendation = getRecommendation(level)
+            recommendation = getRecommendation(level),
+            threatCategory = category
         )
     }
 

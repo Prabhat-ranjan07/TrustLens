@@ -109,6 +109,13 @@ fun ScanDetailScreen(
                     }
 
                     Text(
+                        text = "Threat Category: ${formatThreatCategory(item.threatCategory)}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+
+                    Text(
                         text = "Anonymized Target: ${item.inputSummary}",
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Medium
@@ -149,5 +156,11 @@ fun ScanDetailScreen(
                 }
             }
         }
+    }
+}
+
+private fun formatThreatCategory(categoryStr: String): String {
+    return categoryStr.split("_").joinToString(" ") { word ->
+        word.lowercase().replaceFirstChar { it.uppercase() }
     }
 }

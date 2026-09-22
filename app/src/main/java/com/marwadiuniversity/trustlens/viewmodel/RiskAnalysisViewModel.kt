@@ -117,7 +117,8 @@ class RiskAnalysisViewModel(application: Application) : AndroidViewModel(applica
                     indicatorsJson = finalResult.indicators.joinToString(" | ") { it.title },
                     recommendation = finalResult.recommendation,
                     confidence = conf,
-                    aiSource = source
+                    aiSource = source,
+                    threatCategory = finalResult.threatCategory.name
                 )
                 historyRepository.insertScan(entity)
             } catch (e: Exception) {

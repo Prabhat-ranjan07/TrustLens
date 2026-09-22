@@ -6,5 +6,6 @@ data class RiskResult(
     val scanType: ScanType,
     val input: String,
     val indicators: List<RiskIndicator>,
-    val recommendation: String
+    val recommendation: String,
+    val threatCategory: ThreatCategory = ThreatCategory.UNKNOWN
 )

@@ -28,5 +28,6 @@ data class AiAnalysisResult(
     val indicators: List<AiIndicator>,
     val recommendation: String,
     val confidence: Float,
-    val aiSource: String = "fallback"
+    val aiSource: String = "fallback",
+    val threatCategory: ThreatCategory = ThreatCategory.UNKNOWN
 )

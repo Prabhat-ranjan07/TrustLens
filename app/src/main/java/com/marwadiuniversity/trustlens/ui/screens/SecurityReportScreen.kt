@@ -29,6 +29,8 @@ fun SecurityReportScreen(
     val highCount = scans.count { it.riskScore in 60..79 }
     val critCount = scans.count { it.riskScore >= 80 }
 
+    val categoryCounts = scans.groupingBy { it.threatCategory }.eachCount()
+
     val scrollState = rememberScrollState()
 
     Column(
@@ -78,7 +80,7 @@ fun SecurityReportScreen(
             }
         }
 
-        // Breakdown Cards
+        // Breakdown Cards (Risk Levels)
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -92,6 +94,57 @@ fun SecurityReportScreen(
         ) {
             StatBox(modifier = Modifier.weight(1f), title = "High", count = highCount, color = Color(0xFFDC2626))
             StatBox(modifier = Modifier.weight(1f), title = "Critical", count = critCount, color = Color(0xFF990000))
+        }
+
+        // Threat Categories Breakdown Card
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest)
+        ) {
+            Column(
+                modifier = Modifier.padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Text(
+                    text = "Threat Categories Breakdown",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                if (categoryCounts.isEmpty()) {
+                    Text(
+                        text = "No category data available yet.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.outline
+                    )
+                } else {
+                    categoryCounts.entries.sortedByDescending { it.value }.forEach { (cat, count) ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = formatThreatCategory(cat),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Surface(
+                                shape = RoundedCornerShape(50),
+                                color = MaterialTheme.colorScheme.secondaryContainer
+                            ) {
+                                Text(
+                                    text = count.toString(),
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 2.dp),
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSecondaryContainer
+                                )
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }
@@ -111,5 +164,11 @@ fun StatBox(modifier: Modifier = Modifier, title: String, count: Int, color: Col
             Text(text = count.toString(), style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold, color = color)
             Text(text = title, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
+    }
+}
+
+private fun formatThreatCategory(categoryStr: String): String {
+    return categoryStr.split("_").joinToString(" ") { word ->
+        word.lowercase().replaceFirstChar { it.uppercase() }
     }
 }

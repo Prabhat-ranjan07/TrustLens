@@ -147,7 +147,7 @@ fun HistoryScreen(
                                     maxLines = 1
                                 )
                                 Text(
-                                    text = "${scan.scanType} · ${formatDate(scan.timestamp)}",
+                                    text = "${scan.scanType} · ${formatThreatCategory(scan.threatCategory)} · ${formatDate(scan.timestamp)}",
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.outline
                                 )
@@ -202,6 +202,12 @@ fun HistoryScreen(
                 }
             }
         )
+    }
+}
+
+private fun formatThreatCategory(categoryStr: String): String {
+    return categoryStr.split("_").joinToString(" ") { word ->
+        word.lowercase().replaceFirstChar { it.uppercase() }
     }
 }
 

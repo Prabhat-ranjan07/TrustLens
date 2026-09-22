@@ -3,6 +3,7 @@ package com.marwadiuniversity.trustlens.data.local.room
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 import com.marwadiuniversity.trustlens.domain.model.ScanType
+import com.marwadiuniversity.trustlens.domain.model.ThreatCategory
 
 @Entity(tableName = "scan_history")
 data class ScanHistoryEntity(
@@ -16,7 +17,8 @@ data class ScanHistoryEntity(
     val indicatorsJson: String,
     val recommendation: String,
     val confidence: Float,
-    val aiSource: String
+    val aiSource: String,
+    val threatCategory: String = ThreatCategory.UNKNOWN.name
 )
 
 fun sanitizeInputForHistory(input: String, scanType: ScanType): String {

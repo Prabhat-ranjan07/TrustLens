@@ -1,4 +1,18 @@
-import { AiAnalysisRequest, AiAnalysisResponse, RiskLevel } from '../models/aiModels';
+import { AiAnalysisRequest, AiAnalysisResponse, RiskLevel, ThreatCategory } from '../models/aiModels';
+
+const ALLOWED_CATEGORIES: ThreatCategory[] = [
+    "PHISHING",
+    "PAYMENT_SCAM",
+    "FAKE_JOB",
+    "FAKE_INVESTMENT",
+    "LOTTERY_SCAM",
+    "IMPERSONATION",
+    "CREDENTIAL_THEFT",
+    "SUSPICIOUS_URL",
+    "QR_SCAM",
+    "SOCIAL_ENGINEERING",
+    "UNKNOWN"
+];
 
 export class AiService {
     private apiKey: string;
@@ -23,7 +37,8 @@ Return ONLY a valid JSON object matching this schema:
     "summary": "string",
     "indicators": [{"title": "string", "description": "string"}],
     "recommendation": "string",
-    "confidence": number (0.0 to 1.0)
+    "confidence": number (0.0 to 1.0),
+    "threatCategory": "PHISHING | PAYMENT_SCAM | FAKE_JOB | FAKE_INVESTMENT | LOTTERY_SCAM | IMPERSONATION | CREDENTIAL_THEFT | SUSPICIOUS_URL | QR_SCAM | SOCIAL_ENGINEERING | UNKNOWN"
 }
 
 Content type: ${request.contentType}
@@ -52,6 +67,11 @@ Local indicators: ${JSON.stringify(request.localIndicators)}`;
             }
 
             const parsed = JSON.parse(textContent);
+            let cat: ThreatCategory = "UNKNOWN";
+            if (parsed.threatCategory && ALLOWED_CATEGORIES.includes(parsed.threatCategory)) {
+                cat = parsed.threatCategory;
+            }
+
             return {
                 riskLevel: parsed.riskLevel || 'UNKNOWN',
                 riskScore: typeof parsed.riskScore === 'number' ? Math.min(100, Math.max(0, parsed.riskScore)) : request.localRiskScore,
@@ -59,7 +79,8 @@ Local indicators: ${JSON.stringify(request.localIndicators)}`;
                 indicators: Array.isArray(parsed.indicators) ? parsed.indicators : [],
                 recommendation: parsed.recommendation || 'Verify through official channels.',
                 confidence: typeof parsed.confidence === 'number' ? Math.min(1.0, Math.max(0.0, parsed.confidence)) : 0.85,
-                aiSource: 'gemini'
+                aiSource: 'gemini',
+                threatCategory: cat
             };
         } catch (error) {
             return this.getMockAiResponse(request, 'fallback');
@@ -83,7 +104,8 @@ Local indicators: ${JSON.stringify(request.localIndicators)}`;
             ],
             recommendation: isHigh ? "Do not share sensitive credentials or click unknown links." : "Content appears safe. Exercise normal caution.",
             confidence: 0.88,
-            aiSource: source
+            aiSource: source,
+            threatCategory: isHigh ? "CREDENTIAL_THEFT" : "UNKNOWN"
         };
     }
 }

@@ -5,6 +5,7 @@ import com.marwadiuniversity.trustlens.domain.model.AiRiskLevel
 import com.marwadiuniversity.trustlens.domain.model.RiskIndicator
 import com.marwadiuniversity.trustlens.domain.model.RiskLevel
 import com.marwadiuniversity.trustlens.domain.model.RiskResult
+import com.marwadiuniversity.trustlens.domain.model.ThreatCategory
 import com.marwadiuniversity.trustlens.domain.model.riskLevelFromScore
 
 class CombinedRiskCalculator {
@@ -50,13 +51,20 @@ class CombinedRiskCalculator {
             local.recommendation
         }
 
+        val finalCategory = if (ai.confidence >= 0.5f && ai.threatCategory != ThreatCategory.UNKNOWN) {
+            ai.threatCategory
+        } else {
+            local.threatCategory
+        }
+
         return RiskResult(
             score = combinedScore,
             level = combinedLevel,
             scanType = local.scanType,
             input = local.input,
             indicators = combinedIndicators,
-            recommendation = finalRecommendation
+            recommendation = finalRecommendation,
+            threatCategory = finalCategory
         )
     }
 }
