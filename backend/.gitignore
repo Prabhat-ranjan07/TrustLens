@@ -19,11 +19,8 @@ local.properties
 serviceAccountKey.json
 **/serviceAccountKey.json
 
-# Backend dependencies
-backend/node_modules/
-
-# Backend build output
-backend/dist/
+node_modules/
+dist/
 
 # Logs
 *.log
