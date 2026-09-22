@@ -8,8 +8,34 @@ dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const isProduction = process.env.NODE_ENV === 'production';
 
-app.use(cors());
+// Environment-aware CORS configuration
+const corsOptions: cors.CorsOptions = {
+    origin: (origin, callback) => {
+        const allowedOrigin = process.env.CORS_ORIGIN;
+        if (isProduction) {
+            if (!allowedOrigin) {
+                return callback(new Error('CORS configuration error: CORS_ORIGIN is required in production.'));
+            }
+            const allowedOrigins = allowedOrigin.split(',').map(o => o.trim());
+            if (!origin || allowedOrigins.includes(origin)) {
+                return callback(null, true);
+            } else {
+                return callback(new Error('Not allowed by CORS in production.'));
+            }
+        } else {
+            // Development: allow requests with no origin (like mobile native apps / emulators) or specified origin
+            if (!origin || !allowedOrigin || allowedOrigin === '*' || origin === allowedOrigin || origin.startsWith('http://localhost') || origin.startsWith('http://10.0.2.2')) {
+                return callback(null, true);
+            } else {
+                return callback(null, true); // Permissive in dev
+            }
+        }
+    }
+};
+
+app.use(cors(corsOptions));
 app.use(express.json({ limit: '50kb' }));
 
 // Initialize Firebase Admin if service account available
@@ -28,18 +54,14 @@ try {
 app.use('/api/ai', aiRouter);
 
 app.get('/health', (req, res) => {
-    const firebaseConfigured = admin.apps.length > 0;
-    const aiConfigured = !!process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY !== 'YOUR_SERVER_SIDE_GEMINI_API_KEY';
     res.status(200).json({
         status: 'ok',
-        service: 'TrustLens AI Backend',
-        firebase: firebaseConfigured ? 'configured' : 'not configured',
-        ai: aiConfigured ? 'configured' : 'not configured'
+        service: 'TrustLens AI Backend'
     });
 });
 
 app.listen(PORT, () => {
-    console.log(`TrustLens secure backend running on port ${PORT}`);
+    console.log(`TrustLens secure backend running on port ${PORT} [Env: ${process.env.NODE_ENV || 'development'}]`);
     console.log(`Gemini Model: ${process.env.GEMINI_MODEL || 'gemini-3.6-flash'}`);
     console.log(`Firebase Admin: ${admin.apps.length > 0 ? 'Configured' : 'Mock/Unconfigured'}`);
 });
