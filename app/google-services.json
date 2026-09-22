@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "959991556073",
+    "project_id": "trustlens-da0c7",
+    "storage_bucket": "trustlens-da0c7.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:959991556073:android:d2c384aceb2e7428360d78",
+        "android_client_info": {
+          "package_name": "com.marwadiuniversity.trustlens"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB5wofLVJNRWpNm1RcohL0q3tU8qnOHSJY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

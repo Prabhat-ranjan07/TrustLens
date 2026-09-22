@@ -1,0 +1,40 @@
+# Android Studio
+.idea/
+*.iml
+
+# Gradle
+.gradle/
+build/
+**/build/
+
+# Local configuration
+local.properties
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+
+# Firebase Admin credentials
+serviceAccountKey.json
+**/serviceAccountKey.json
+
+# Backend dependencies
+backend/node_modules/
+
+# Backend build output
+backend/dist/
+
+# Logs
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Kotlin/Java generated files
+.kotlin/
+
+# Temporary files
+*.tmp
+*.temp
