@@ -37,5 +37,11 @@ fun sanitizeInputForHistory(input: String, scanType: ScanType): String {
                 else -> if (trimmed.length > 40) trimmed.take(37) + "..." else trimmed
             }
         }
+        ScanType.UPI -> {
+            if (trimmed.length > 40) trimmed.take(37) + "..." else trimmed
+        }
+        ScanType.SCREENSHOT -> {
+            "Payment Screenshot Analysis"
+        }
     }
 }
